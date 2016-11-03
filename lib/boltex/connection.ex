@@ -8,7 +8,7 @@ defmodule Boltex.Connection do
 
   use DBConnection
 
-  alias Boltex.{Bolt, Connection, Query, Error}
+  alias Boltex.{Bolt, Query, Error}
 
   @doc "Callback for DBConnection.connect/1"
   def connect(opts) do
@@ -29,6 +29,9 @@ defmodule Boltex.Connection do
     do
       {:ok, port}
     else
+      {:error, %Boltex.Error{}} = error ->
+        error
+
       error ->
         {:error, Error.exception(error, nil, :connect)}
     end

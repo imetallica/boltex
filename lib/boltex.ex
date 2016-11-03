@@ -5,8 +5,6 @@ defmodule Boltex do
   It supports de- and encoding of Boltex binaries and sending and receiving
   of data using the Bolt protocol.
   """
-  alias Boltex.Bolt
-
   @default_opts [
     host: "localhost",
     port: 7687,

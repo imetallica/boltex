@@ -70,8 +70,11 @@ defmodule Boltex.Bolt do
       {:success, %{}} ->
         :ok
 
-      response ->
+      {:failure, response} ->
         {:error, Error.exception(response, port, :init)}
+
+      other ->
+        {:error, Error.exception(other, port, :init)}
     end
   end
 
