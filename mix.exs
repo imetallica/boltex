@@ -33,7 +33,7 @@ defmodule Boltex.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:db_connection, "~> 1.0.0-rc.5"},
+      {:db_connection, "~> 1.0.0"},
 
       {:credo, "~> 0.3", only: [:dev, :test]},
       {:ex_doc, "~> 0.13.0", only: [:docs]},
@@ -45,7 +45,7 @@ defmodule Boltex.Mixfile do
   defp package do
     [
       name: :boltex,
-      files: ~w(lib README.md LICENSE),
+      files: ~w(mix.exs lib README.md LICENSE),
       build_tools: [:hex],
       maintainers: ["Michael Schaefermeyer"],
       licenses: ["Apache 2.0"],
