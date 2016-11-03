@@ -11,7 +11,7 @@ defmodule Boltex.ConnectionTest do
 
   @tag :integration
   test "executes a query successfully" do
-    assert {:ok, pid} = DBConnection.start_link Boltex.Connection, [host: "localhost", port: 7687, auth: {}]
+    assert {:ok, pid} = DBConnection.start_link Boltex.Connection, [host: "localhost", port: 7687, auth: {"neo4j", "password"}]
     query = %Boltex.Query{statement: "MATCH (n) RETURN n"}
     assert {:ok, [{:success, _} | _]} = DBConnection.execute pid, query, %{}, []
   end
