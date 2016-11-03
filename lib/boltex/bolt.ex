@@ -216,7 +216,6 @@ defmodule Boltex.Bolt do
   end
   defp do_receive_data(transport, port, chunk_size, old_data \\ {:ok, <<>>})
   defp do_receive_data(transport, port, chunk_size, {:ok, old_data}) do
-    IO.puts "do receiev"
     with {:ok, data}   <- transport.recv(port, chunk_size, @recv_timeout),
          {:ok, marker} <- transport.recv(port, 2, @recv_timeout)
     do
