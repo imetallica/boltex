@@ -57,8 +57,8 @@ defmodule Boltex.Connection do
         {:ok, data, port}
 
       %Error{type: :cypher_error} = error ->
-      # TODO: Ack failure
-        {:error, error, port}
+        with :ok <- Bolt.ack_failure(:gen_tcp, port),
+        do:  {:error, error, port}
 
       other ->
         {:disconnect, other, port}
