@@ -2,6 +2,14 @@
 # and its dependencies with the aid of the Mix.Config module.
 use Mix.Config
 
+config :pool_example, PoolExample,
+  host: "192.168.99.100",
+  port: 7688,
+  auth: {"neo4j", "password"},
+  pool: DBConnection.Poolboy,
+  name: :boltex_pool
+
+
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this
 # file won't be loaded nor affect the parent project. For this reason,
