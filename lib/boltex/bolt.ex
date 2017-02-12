@@ -256,8 +256,13 @@ defmodule Boltex.Bolt do
   Unpacks (or in other words parses) a message.
   """
   def unpack(<< 0x0B :: 4, packages :: 4, status, message :: binary >>) do
-    response = PackStream.decode(message)
-    response = if packages == 1, do: List.first(response), else: response
+    response =
+      case PackStream.decode(message) do
+        response when packages == 1 ->
+          List.first response
+        responses ->
+          responses
+      end
 
     case status do
       @sig_success -> {:success, response}

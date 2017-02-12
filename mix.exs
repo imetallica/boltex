@@ -33,10 +33,10 @@ defmodule Boltex.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:credo, "~> 0.3", only: [:dev, :test]},
-      {:ex_doc, "~> 0.13.0", only: [:docs]},
-      {:inch_ex, "~> 0.5.2", only: [:docs]},
-      {:mix_test_watch, "~> 0.2.6", only: [:dev, :test]},
+      {:credo, "~> 0.6", only: [:dev, :test]},
+      {:ex_doc, "~> 0.14", only: [:docs]},
+      {:inch_ex, "~> 0.5", only: [:docs]},
+      {:mix_test_watch, "~> 0.3.3", only: [:dev, :test]},
     ]
   end
 
