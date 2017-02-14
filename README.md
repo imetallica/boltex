@@ -30,12 +30,6 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 Boltex.test 'localhost', 7687, "MATCH (n) RETURN n"
 ```
 
-To use it in production I recommend using a pool:
-
-```elixir
-
-```
-
 ## Todo
 
 - [x] PackStream decoding
