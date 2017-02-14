@@ -31,12 +31,27 @@ defmodule Boltex.Bolt do
 
   It abstracts transportation, expecing the transport layer to define
   send/2 and recv/3 analogous to :gen_tcp.
+
+  ## Shared options
+
+  Functions that allow for options accept these default options:
+
+    * `recv_timeout`: The timeout for receiving a response from the Neo4J s
+      server (default: #{@recv_timeout})
   """
 
-  @doc "Does the handshake"
-  def handshake(transport, port) do
+  @doc """
+  Initiates the handshake between the client and the server.
+
+  ## Options
+
+  See "Shared options" in the documentation of this module.
+  """
+  def handshake(transport, port, options \\ []) do
+    recv_timeout = get_recv_timeout options
+
     transport.send port, @hs_magic <> @hs_version
-    case transport.recv(port, 4, @recv_timeout) do
+    case transport.recv(port, 4, recv_timeout) do
       {:ok, << 1 :: 32 >>} ->
         :ok
 
@@ -54,6 +69,10 @@ defmodule Boltex.Bolt do
   Expects a transport module (i.e. `gen_tcp`) and a `Port`. Accepts
   authorisation params in the form of {username, password}.
 
+  ## Options
+
+  See "Shared options" in the documentation of this module.
+
   ## Examples
 
       iex> Boltex.Bolt.init :gen_tcp, port
@@ -62,11 +81,11 @@ defmodule Boltex.Bolt do
       iex> Boltex.Bolt.init :gen_tcp, port, {"username", "password"}
       :ok
   """
-  def init(transport, port, auth \\ {}) do
+  def init(transport, port, auth \\ {}, options \\ []) do
     params = auth_params auth
     send_messages transport, port, [{[@user_agent, params], @sig_init}]
 
-    case receive_data(transport, port) do
+    case receive_data(transport, port, options) do
       {:success, %{}} ->
         :ok
 
@@ -141,6 +160,10 @@ defmodule Boltex.Bolt do
   Records are represented using PackStream's record data type. Their Elixir
   representation is a Keyword with the indexse `:sig` and `:fields`.
 
+  ## Options
+
+  See "Shared options" in the documentation of this module.
+
   ## Examples
 
       iex> Boltex.Bolt.run_statement("MATCH (n) RETURN n")
@@ -150,13 +173,13 @@ defmodule Boltex.Bolt do
         {:success, %{"type" => "r"}}
       ]
   """
-  def run_statement(transport, port, statement, params \\ %{}) do
+  def run_statement(transport, port, statement, params \\ %{}, options \\ []) do
     send_messages transport, port, [
       {[statement, params], @sig_run},
       {[nil], @sig_pull_all}
     ]
 
-    case receive_data(transport, port) do
+    case receive_data(transport, port, options) do
       {:success, %{}} = data ->
         [data | (transport |> receive_data(port) |> List.wrap)]
 
@@ -173,14 +196,18 @@ defmodule Boltex.Bolt do
 
   This function is supposed to be called after a failure response has been
   received from the server.
+
+  ## Options
+
+  See "Shared options" in the documentation of this module.
   """
-  def ack_failure(transport, port) do
+  def ack_failure(transport, port, options) do
     send_messages transport, port, [
       {[nil], @sig_ack_failure}
     ]
 
-    with {:ignored, []}  <- receive_data(transport, port),
-         {:success, %{}} <- receive_data(transport, port),
+    with {:ignored, []}  <- receive_data(transport, port, options),
+         {:success, %{}} <- receive_data(transport, port, options),
     do: :ok
   end
 
@@ -206,13 +233,17 @@ defmodule Boltex.Bolt do
   * `:record`
   * `:ignored`
   * `:failure`
+
+  ## Options
+
+  See "Shared options" in the documentation of this module.
   """
-  def receive_data(transport, port, previous \\ []) do
-    with {:ok, data} <- do_receive_data(transport, port)
+  def receive_data(transport, port, options \\ [], previous \\ []) do
+    with {:ok, data} <- do_receive_data(transport, port, options)
     do
       case unpack(data) do
         {:record, _} = data ->
-          receive_data transport, port, [data | previous]
+          receive_data transport, port, options, [data | previous]
 
         {status, _} = data when status in @summary and previous == [] ->
           data
@@ -229,28 +260,32 @@ defmodule Boltex.Bolt do
     end
   end
 
-  defp do_receive_data(transport, port) do
-    with {:ok, <<chunk_size :: 16>>} <- transport.recv(port, 2, @recv_timeout),
-    do:  do_receive_data(transport, port, chunk_size)
+  defp do_receive_data(transport, port, options) do
+    recv_timeout = get_recv_timeout options
+
+    with {:ok, <<chunk_size :: 16>>} <- transport.recv(port, 2, recv_timeout),
+    do:  do_receive_data(transport, port, chunk_size, options, {:ok, <<>>})
   end
-  defp do_receive_data(transport, port, chunk_size, old_data \\ {:ok, <<>>})
-  defp do_receive_data(transport, port, chunk_size, {:ok, old_data}) do
-    with {:ok, data}   <- transport.recv(port, chunk_size, @recv_timeout),
-         {:ok, marker} <- transport.recv(port, 2, @recv_timeout)
+  defp do_receive_data(transport, port, chunk_size, options, {:ok, old_data}) do
+    recv_timeout = get_recv_timeout options
+
+    with {:ok, data}   <- transport.recv(port, chunk_size, recv_timeout),
+         {:ok, marker} <- transport.recv(port, 2, recv_timeout)
     do
       case marker do
         @zero_chunk ->
           {:ok, old_data <> data}
 
         <<chunk_size :: 16>> ->
-          do_receive_data(transport, port, chunk_size, {:ok, data})
+          data = old_data <> data
+          do_receive_data(transport, port, chunk_size, options, {:ok, data})
       end
     else
       other ->
         Error.exception other, port, :recv
     end
   end
-  defp do_receive_data(_, _, _, {:error, _} = error), do: error
+  defp do_receive_data(_, _, _, _, {:error, _} = error), do: error
 
   @doc """
   Unpacks (or in other words parses) a message.
@@ -271,5 +306,9 @@ defmodule Boltex.Bolt do
       @sig_failure -> {:failure, response}
       other        -> raise "Couldn't decode #{Utils.hex_encode << other >>}"
     end
+  end
+
+  defp get_recv_timeout(options) do
+    Keyword.get(options, :recv_timeout, @recv_timeout)
   end
 end
